@@ -11,8 +11,10 @@ from PIL import Image
 
 
 def capture(frame):
-     cv2.imwrite("frame.jpg", frame)
-     return
+    success = cv2.imwrite('/home/pi/output.jpg', image)
+    if not success:
+        print("Failed to save the image.")
+    return
 
 
 def get_album_name():
@@ -175,6 +177,7 @@ if __name__=="__main__":
     # Release the VideoCapture object
     cap.release()
     cv2.destroyAllWindows()
+    print("picture taken")
 
     album_name,artist=get_album_name()
     tracklist = get_album_data(album_name,artist)
