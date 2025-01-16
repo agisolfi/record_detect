@@ -150,7 +150,7 @@ client = OpenAI(
 if __name__=="__main__":
 
     # Create a VideoCapture object
-    cap = cv2.VideoCapture(13)  # 0 represents the default camera
+    cap = cv2.VideoCapture(0)  # 0 represents the default camera
 
     # Check if the camera is opened successfully
     if not cap.isOpened():
