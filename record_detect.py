@@ -84,8 +84,10 @@ def get_album_data(album_name,artist):
         client_id=os.environ.get("SPOTIFY_CLIENT_ID"),
         client_secret=os.environ.get("SPOTIFY_CLIENT_SECRET"),
         redirect_uri="http://192.168.2.90:8000/callback",
-        scope="user-read-private,playlist-modify-public,playlist-modify-private"  # Use 'playlist-modify-private' for private playlists
+        scope="user-read-private,playlist-modify-public,playlist-modify-private",  # Use 'playlist-modify-private' for private playlists
+        open_browser=False 
     ))
+
 
     query = f"album:{album_name} artist:{artist}"
     results = sp.search(q=query, type="album", limit=1)
