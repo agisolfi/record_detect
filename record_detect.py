@@ -11,10 +11,8 @@ from PIL import Image
 
 
 def capture(frame):
-    success = cv2.imwrite('/home/pi/output.jpg', image)
-    if not success:
-        print("Failed to save the image.")
-    return
+     cv2.imwrite("frame.jpg", frame)
+     return
 
 
 def get_album_name():
@@ -152,7 +150,7 @@ client = OpenAI(
 if __name__=="__main__":
 
     # Create a VideoCapture object
-    cap = cv2.VideoCapture(0)  # 0 represents the default camera
+    cap = cv2.VideoCapture(0,cv2.CAP_V4L2)  # 0 represents the default camera
 
     # Check if the camera is opened successfully
     if not cap.isOpened():
