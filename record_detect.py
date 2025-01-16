@@ -87,6 +87,10 @@ def get_album_data(album_name,artist):
         scope="user-read-private,playlist-modify-public,playlist-modify-private"  # Use 'playlist-modify-private' for private playlists
     ))
 
+
+    auth_url = sp.get_authorize_url()
+    print(f"Visit this URL to authorize: {auth_url}")
+
     query = f"album:{album_name} artist:{artist}"
     results = sp.search(q=query, type="album", limit=1)
 
