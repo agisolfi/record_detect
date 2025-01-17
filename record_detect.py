@@ -5,8 +5,8 @@ import base64
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import json
-from pdf2image import convert_from_path
-from PIL import Image
+import pygame
+import requests
 
 
 
@@ -77,16 +77,27 @@ def get_album_name():
 
     return album_name,artist
 
+def download_album_cover(url, save_path):
+    response = requests.get(url)
+    if response.status_code == 200:
+        with open(save_path, "wb") as file:
+            file.write(response.content)
+        print(f"Album cover saved to {save_path}")
+    else:
+        print("Failed to download the album cover.")
+
+
 def get_album_data(album_name,artist):
 
     # Authenticate Spotipy
     sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
         client_id=os.environ.get("SPOTIFY_CLIENT_ID"),
         client_secret=os.environ.get("SPOTIFY_CLIENT_SECRET"),
-        redirect_uri="http://192.168.2.90:8000/callback",
+        redirect_uri="http://localhost:8000/callback",
         scope="user-read-private,playlist-modify-public,playlist-modify-private",  # Use 'playlist-modify-private' for private playlists
         open_browser=False 
     ))
+
 
 
     query = f"album:{album_name} artist:{artist}"
@@ -95,61 +106,104 @@ def get_album_data(album_name,artist):
     if results['albums']['items']:
         album = results['albums']['items'][0]
         album_id = album['id']
-        
+        cover_url = album["images"][0]["url"]  # 640px by 640px
         # Get the album's tracks
         tracks = sp.album_tracks(album_id)
         
         # Extract track names
         tracklist = [track['name'] for track in tracks['items']]
-        
+
+        # Get the album cover URL (choose size: 640px, 300px, or 64px)
+        cover_url = album["images"][0]["url"]  # 640px by 640px
+        download_album_cover(cover_url,"album_cover.jpeg")
         return tracklist
     else:
         return f"No album found for '{album_name}' by {artist}."
-
-def convert_to_projector(album_name, artist_name, tracklist, output_path="album_tracklist.pdf"):
-    from reportlab.lib.pagesizes import letter
-    from reportlab.pdfgen import canvas
-    # Create a PDF canvas
-    c = canvas.Canvas(output_path, pagesize=letter)
-
-    # Set up title and header
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(100, 750, f"Album: {album_name}")
-    c.setFont("Helvetica", 12)
-    c.drawString(100, 730, f"Artist: {artist_name}")
     
-    # Set up the tracklist section
-    c.setFont("Helvetica", 10)
-    y_position = 700  # Starting Y position for the tracklist
-
-    # Add each track to the PDF
-    for i, track in enumerate(tracklist, 1):
-        if y_position < 100:  # Check if we need to add a new page
-            c.showPage()  # Add a new page
-            c.setFont("Helvetica", 10)
-            y_position = 750  # Reset Y position for new page
-        c.drawString(100, y_position, f"{i}. {track}")
-        y_position -= 15  # Move down the Y position for the next track
     
-    # Save the PDF
-    c.save()
 
 
-def convert_to_png(pdf_path,png_path):
-    images = convert_from_path(pdf_path)
+def make_display(album_cover, album_name, artist_name,tracklist):
+    # Initialize Pygame
+    pygame.init()
+    screen_width = 1024
+    screen_height=600
+    screen = pygame.display.set_mode((screen_width, screen_height))
+    pygame.display.set_caption("Album Display")
 
-    for i in range(len(images)):
-  
-      # Save pages as images in the pdf
-        images[i].save('page'+ str(i) +'.png', 'PNG')
+    # Load the image
+    image = pygame.image.load(album_cover)
+    image = pygame.transform.scale(image, (300, 300))  # Resize if needed
+
+    # Fonts
+    font_title = pygame.font.SysFont("Arial", 40)
+    font_text = pygame.font.SysFont("Arial", 24)
+
+    # Colors
+    white = (255, 255, 255)
+    black = (0, 0, 0)
+    red = (176,0,5)
+
+        # Scrolling parameters
+    visible_items = 8  # Number of tracklist items visible at once
+    scroll_position = 0  # Tracks the current scroll position
+
+    running = True
+    while running:
+        # Fill the screen with black
+        screen.fill(black)
+
+        # Display the image
+        screen.blit(image, (50, 150))  # Position the image (x=50, y=50)
+
+        # Display text
+        now_playing = font_title.render(f"Now Playing: ", True, red)
+        screen.blit(now_playing, (500, 50))
+        title_surface = font_title.render(f"Album: {album_name}", True, white)
+        artist_surface = font_title.render(f"Artist: {artist_name}", True, white)
+        screen.blit(title_surface, (500, 120))  # Position text to the right of the image
+        screen.blit(artist_surface, (500, 170))
+
+        # Display a subset of the tracklist based on scroll_position
+        y_offset = 240
+        for i in range(scroll_position, min(scroll_position + visible_items, len(tracklist))):
+            track_surface = font_text.render(f"{i + 1}. {tracklist[i]}", True, white)
+            screen.blit(track_surface, (500, y_offset))
+            y_offset += 30
+
+        # Draw scroll buttons
+        up_button = pygame.Rect(screen_width-70, 400, 50, 50)  # (x, y, width, height)
+        down_button = pygame.Rect(screen_width-70, 500, 50, 50)
+        pygame.draw.rect(screen, white, up_button)
+        pygame.draw.rect(screen, white, down_button)
+
+        # Button labels
+        up_text = font_text.render("↑", True, black)
+        down_text = font_text.render("↓", True, black)
+        screen.blit(up_text, (screen_width-50, 410))
+        screen.blit(down_text, (screen_width-50, 510))
+
+        pygame.display.flip()
+
+        # Handle events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if up_button.collidepoint(event.pos) and scroll_position > 0:
+                    scroll_position -= 1  # Scroll up
+                elif down_button.collidepoint(event.pos) and scroll_position + visible_items < len(tracklist):
+                    scroll_position += 1  # Scroll down
 
 
-# Authenticate OPENAI
-client = OpenAI(
-    api_key=os.environ.get("OPENAI_API_KEY"),  
-)
+    pygame.quit()
 
 if __name__=="__main__":
+
+    # Authenticate OPENAI
+    client = OpenAI(
+        api_key=os.environ.get("OPENAI_API_KEY"),  
+    )
 
     # Create a VideoCapture object
     cap = cv2.VideoCapture(0)  # 0 represents the default camera
@@ -181,11 +235,10 @@ if __name__=="__main__":
 
     album_name,artist=get_album_name()
     tracklist = get_album_data(album_name,artist)
-    for track in tracklist:
-        print(track)
-    convert_to_projector(album_name=album_name,artist_name=artist,tracklist=tracklist)
-    convert_to_png("album_tracklist.pdf","page0.png")
-    
+
+    make_display(album_cover="album_cover.jpeg",album_name=album_name,artist_name=artist,tracklist=tracklist)
+
+
 
 
 
