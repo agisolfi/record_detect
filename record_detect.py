@@ -172,16 +172,16 @@ def make_display(album_cover, album_name, artist_name,tracklist):
             y_offset += 30
 
         # Draw scroll buttons
-        up_button = pygame.Rect(screen_width-70, 400, 50, 50)  # (x, y, width, height)
-        down_button = pygame.Rect(screen_width-70, 500, 50, 50)
+        up_button = pygame.Rect(screen_width-70, 370, 50, 50)  # (x, y, width, height)
+        down_button = pygame.Rect(screen_width-70, 470, 50, 50)
         pygame.draw.rect(screen, white, up_button)
         pygame.draw.rect(screen, white, down_button)
 
         # Button labels
         up_text = font_text.render("↑", True, black)
         down_text = font_text.render("↓", True, black)
-        screen.blit(up_text, (screen_width-50, 410))
-        screen.blit(down_text, (screen_width-50, 510))
+        screen.blit(up_text, (screen_width-50, 380))
+        screen.blit(down_text, (screen_width-50, 470))
 
         pygame.display.flip()
 
