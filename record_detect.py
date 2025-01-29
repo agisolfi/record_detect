@@ -8,7 +8,22 @@ import json
 import pygame
 import requests
 
+# Initialize Pygame
+pygame.init()
 
+# Fonts
+FONT_TITLE = pygame.font.SysFont("Arial", 40)
+FONT_TEXT = pygame.font.SysFont("Arial", 24)
+
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (176,0,5)
+LIGHT_RED=(255,128,128)
+
+# Screen Dimensions
+SCREEN_WIDTH = 1024
+SCREEN_HEIGHT = 600
 
 def capture(frame):
      cv2.imwrite("frame.jpg", frame)
@@ -123,65 +138,59 @@ def get_album_data(album_name,artist):
     
 
 
-def make_display(album_cover, album_name, artist_name,tracklist):
-    # Initialize Pygame
-    pygame.init()
-    screen_width = 1024
-    screen_height=600
-    screen = pygame.display.set_mode((screen_width, screen_height))
+def build_album_screen(album_cover, album_name, artist_name,tracklist):
+    #dimensions of pi screen
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("Album Display")
 
     # Load the image
     image = pygame.image.load(album_cover)
     image = pygame.transform.scale(image, (300, 300))  # Resize if needed
 
-    # Fonts
-    font_title = pygame.font.SysFont("Arial", 40)
-    font_text = pygame.font.SysFont("Arial", 24)
-
-    # Colors
-    white = (255, 255, 255)
-    black = (0, 0, 0)
-    red = (176,0,5)
-
-        # Scrolling parameters
+    # Scrolling parameters
     visible_items = 8  # Number of tracklist items visible at once
     scroll_position = 0  # Tracks the current scroll position
 
     running = True
     while running:
         # Fill the screen with black
-        screen.fill(black)
+        screen.fill(BLACK)
 
         # Display the image
         screen.blit(image, (50, 150))  # Position the image (x=50, y=50)
 
         # Display text
-        now_playing = font_title.render(f"Now Playing: ", True, red)
+        now_playing = FONT_TITLE.render(f"Now Playing: ", True, RED)
         screen.blit(now_playing, (500, 50))
-        title_surface = font_title.render(f"Album: {album_name}", True, white)
-        artist_surface = font_title.render(f"Artist: {artist_name}", True, white)
+        title_surface = FONT_TITLE.render(f"Album: {album_name}", True, WHITE)
+        artist_surface = FONT_TITLE.render(f"Artist: {artist_name}", True, WHITE)
         screen.blit(title_surface, (500, 120))  # Position text to the right of the image
         screen.blit(artist_surface, (500, 170))
 
         # Display a subset of the tracklist based on scroll_position
         y_offset = 240
         for i in range(scroll_position, min(scroll_position + visible_items, len(tracklist))):
-            track_surface = font_text.render(f"{i + 1}. {tracklist[i]}", True, white)
+            track_surface = FONT_TEXT.render(f"{i + 1}. {tracklist[i]}", True, WHITE)
             screen.blit(track_surface, (500, y_offset))
             y_offset += 30
 
-        # Draw scroll buttons
+        # Draw buttons
         up_button = pygame.Rect(400, 300, 50, 50)  # (x, y, width, height)
         down_button = pygame.Rect(400, 400, 50, 50)
-        pygame.draw.rect(screen, white, up_button)
-        pygame.draw.rect(screen, white, down_button)
+        exit_button = pygame.Rect(50, 50, 50, 50)
+        pygame.draw.rect(screen, WHITE, up_button)
+        pygame.draw.rect(screen, WHITE, down_button)
+        pygame.draw.rect(screen, WHITE, exit_button)
+
 
         # Button labels
-        up_text = font_text.render("↑", True, black)
-        down_text = font_text.render("↓", True, black)
+        up_text = FONT_TEXT.render("↑", True, BLACK)
+        down_text = FONT_TEXT.render("↓", True, BLACK)
+        exit_text = FONT_TEXT.render("X", True, BLACK)
         screen.blit(up_text, (420, 310))
         screen.blit(down_text, (420, 410))
+        screen.blit(exit_text, (65, 60))
+
 
         pygame.display.flip()
 
@@ -194,9 +203,103 @@ def make_display(album_cover, album_name, artist_name,tracklist):
                     scroll_position -= 1  # Scroll up
                 elif down_button.collidepoint(event.pos) and scroll_position + visible_items < len(tracklist):
                     scroll_position += 1  # Scroll down
+                elif exit_button.collidepoint(event.pos):
+                    build_start_screen()
+
 
 
     pygame.quit()
+
+
+def build_start_screen():
+    # Screen dimensions
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    pygame.display.set_caption("Album Detector")
+
+    # Button properties
+    detect_button = pygame.Rect(SCREEN_HEIGHT/2, 150, 400, 100)  # (x, y, width, height)
+
+    quit_button=pygame.Rect(SCREEN_HEIGHT/2, 350, 400, 100)
+
+    def run_detection():
+
+        # Create a VideoCapture object
+        cap = cv2.VideoCapture(0)  # 0 represents the default camera
+
+        # Check if the camera is opened successfully
+        if not cap.isOpened():
+            print("Error opening video stream or file")
+
+        while True:
+            # Read a frame from the camera
+            ret, frame = cap.read()
+
+            # If frame is read correctly, ret is True
+            if not ret:
+                print("Can't receive frame (stream end?). Exiting ...")
+                break
+
+            # # Display the frame
+            # cv2.imshow('Webcam', frame)
+
+            capture(frame)
+            break
+    
+
+        # Release the VideoCapture object
+        cap.release()
+        cv2.destroyAllWindows()
+        print("picture taken")
+
+        album_name,artist=get_album_name()
+        tracklist = get_album_data(album_name,artist)
+
+        build_album_screen(album_cover="album_cover.jpeg",album_name=album_name,artist_name=artist,tracklist=tracklist)
+
+    running = True
+    while running:
+        screen.fill(BLACK)
+
+        # Get mouse position
+        mouse_pos = pygame.mouse.get_pos()
+        mouse_pressed = pygame.mouse.get_pressed()
+
+        # Change detect button color on hover
+        if detect_button.collidepoint(mouse_pos):
+            pygame.draw.rect(screen, RED, detect_button)
+            if mouse_pressed[0]:  # Left mouse button clicked
+                run_detection()
+        else:
+            pygame.draw.rect(screen, LIGHT_RED, detect_button)
+
+        # Change quit button color on hover
+        if quit_button.collidepoint(mouse_pos):
+            pygame.draw.rect(screen, RED, quit_button)
+            if mouse_pressed[0]:  # Left mouse button clicked
+                running=False
+        else:
+            pygame.draw.rect(screen, LIGHT_RED, quit_button)
+
+        # Render button text
+        detect_text = FONT_TITLE.render("Detect Album", True, WHITE)
+        detect_text_rect = detect_text.get_rect(center=detect_button.center)
+        screen.blit(detect_text, detect_text_rect)
+
+        quit_text = FONT_TITLE.render("Quit", True, WHITE)
+        quit_text_rect = quit_text.get_rect(center=quit_button.center)
+        screen.blit(quit_text, quit_text_rect)
+
+        # Event loop
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        # Update display
+        pygame.display.flip()
+
+    # Quit Pygame
+    pygame.quit()
+
 
 if __name__=="__main__":
 
@@ -205,41 +308,8 @@ if __name__=="__main__":
         api_key=os.environ.get("OPENAI_API_KEY"),  
     )
 
-    # Create a VideoCapture object
-    cap = cv2.VideoCapture(0)  # 0 represents the default camera
-
-    # Check if the camera is opened successfully
-    if not cap.isOpened():
-        print("Error opening video stream or file")
-
-    while True:
-        # Read a frame from the camera
-        ret, frame = cap.read()
-
-        # If frame is read correctly, ret is True
-        if not ret:
-            print("Can't receive frame (stream end?). Exiting ...")
-            break
-
-        # # Display the frame
-        # cv2.imshow('Webcam', frame)
-
-        capture(frame)
-        break
-  
-
-    # Release the VideoCapture object
-    cap.release()
-    cv2.destroyAllWindows()
-    print("picture taken")
-
-    album_name,artist=get_album_name()
-    tracklist = get_album_data(album_name,artist)
-
-    make_display(album_cover="album_cover.jpeg",album_name=album_name,artist_name=artist,tracklist=tracklist)
-
-
-
+    build_start_screen()
+    
 
 
 
