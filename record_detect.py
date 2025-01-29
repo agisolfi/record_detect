@@ -18,16 +18,17 @@ FONT_TEXT = pygame.font.SysFont("Arial", 24)
 # Colors
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-RED = (176,0,5)
-LIGHT_RED=(255,128,128)
+RED = (176, 0, 5)
+LIGHT_RED = (255, 128, 128)
 
 # Screen Dimensions
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 600
 
+
 def capture(frame):
-     cv2.imwrite("frame.jpg", frame)
-     return
+    cv2.imwrite("frame.jpg", frame)
+    return
 
 
 def get_album_name():
@@ -35,47 +36,44 @@ def get_album_name():
     def encode_image(image_path):
         with open(image_path, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode("utf-8")
-        
-    image_path="frame.jpg"
 
+    image_path = "frame.jpg"
 
     # Getting the base64 string
     base64_image = encode_image(image_path)
 
     response = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=[
-        {
-        "role": "system",
-        "content": [
+        model="gpt-4o-mini",
+        messages=[
             {
-            "type": "text",
-            "text": " I want you to act as a Album Cover Detector. When receiving an image search the image for only album covers and return the proper album title and artist to the user. Use the following return type: {\"Album Name\": \"\", \"Artist\": \"\"}."
+                "role": "system",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": ' I want you to act as a Album Cover Detector. When receiving an image search the image for only album covers and return the proper album title and artist to the user. Use the following return type: {"Album Name": "", "Artist": ""}.',
+                    },
+                ],
             },
-        ]
-        },
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "What album cover in this image?",
-                },
-                {
-                    "type": "image_url",
-                    "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
-                },
-            ],
-        }
-    ],
-    response_format={
-        "type": "text"
-    },
-    temperature=1,
-    max_completion_tokens=2048,
-    top_p=1,
-    frequency_penalty=0,
-    presence_penalty=0
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "What album cover in this image?",
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
+                    },
+                ],
+            },
+        ],
+        response_format={"type": "text"},
+        temperature=1,
+        max_completion_tokens=2048,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0,
     )
     print(response.choices[0].message.content)
 
@@ -90,7 +88,8 @@ def get_album_name():
     print(f"Album Name: {album_name}")
     print(f"Artist: {artist}")
 
-    return album_name,artist
+    return album_name, artist
+
 
 def download_album_cover(url, save_path):
     response = requests.get(url)
@@ -102,44 +101,42 @@ def download_album_cover(url, save_path):
         print("Failed to download the album cover.")
 
 
-def get_album_data(album_name,artist):
+def get_album_data(album_name, artist):
 
     # Authenticate Spotipy
-    sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
-        client_id=os.environ.get("SPOTIFY_CLIENT_ID"),
-        client_secret=os.environ.get("SPOTIFY_CLIENT_SECRET"),
-        redirect_uri="http://localhost:8000/callback",
-        scope="user-read-private,playlist-modify-public,playlist-modify-private",  # Use 'playlist-modify-private' for private playlists
-        open_browser=False 
-    ))
-
-
+    sp = spotipy.Spotify(
+        auth_manager=SpotifyOAuth(
+            client_id=os.environ.get("SPOTIFY_CLIENT_ID"),
+            client_secret=os.environ.get("SPOTIFY_CLIENT_SECRET"),
+            redirect_uri="http://localhost:8000/callback",
+            scope="user-read-private,playlist-modify-public,playlist-modify-private",  # Use 'playlist-modify-private' for private playlists
+            open_browser=False,
+        )
+    )
 
     query = f"album:{album_name} artist:{artist}"
     results = sp.search(q=query, type="album", limit=1)
 
-    if results['albums']['items']:
-        album = results['albums']['items'][0]
-        album_id = album['id']
+    if results["albums"]["items"]:
+        album = results["albums"]["items"][0]
+        album_id = album["id"]
         cover_url = album["images"][0]["url"]  # 640px by 640px
         # Get the album's tracks
         tracks = sp.album_tracks(album_id)
-        
+
         # Extract track names
-        tracklist = [track['name'] for track in tracks['items']]
+        tracklist = [track["name"] for track in tracks["items"]]
 
         # Get the album cover URL (choose size: 640px, 300px, or 64px)
         cover_url = album["images"][0]["url"]  # 640px by 640px
-        download_album_cover(cover_url,"album_cover.jpeg")
+        download_album_cover(cover_url, "album_cover.jpeg")
         return tracklist
     else:
         return f"No album found for '{album_name}' by {artist}."
-    
-    
 
 
-def build_album_screen(album_cover, album_name, artist_name,tracklist):
-    #dimensions of pi screen
+def build_album_screen(album_cover, album_name, artist_name, tracklist):
+    # dimensions of pi screen
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     pygame.display.set_caption("Album Display")
 
@@ -164,12 +161,16 @@ def build_album_screen(album_cover, album_name, artist_name,tracklist):
         screen.blit(now_playing, (500, 50))
         title_surface = FONT_TITLE.render(f"Album: {album_name}", True, WHITE)
         artist_surface = FONT_TITLE.render(f"Artist: {artist_name}", True, WHITE)
-        screen.blit(title_surface, (500, 120))  # Position text to the right of the image
+        screen.blit(
+            title_surface, (500, 120)
+        )  # Position text to the right of the image
         screen.blit(artist_surface, (500, 170))
 
         # Display a subset of the tracklist based on scroll_position
         y_offset = 240
-        for i in range(scroll_position, min(scroll_position + visible_items, len(tracklist))):
+        for i in range(
+            scroll_position, min(scroll_position + visible_items, len(tracklist))
+        ):
             track_surface = FONT_TEXT.render(f"{i + 1}. {tracklist[i]}", True, WHITE)
             screen.blit(track_surface, (500, y_offset))
             y_offset += 30
@@ -182,7 +183,6 @@ def build_album_screen(album_cover, album_name, artist_name,tracklist):
         pygame.draw.rect(screen, WHITE, down_button)
         pygame.draw.rect(screen, WHITE, exit_button)
 
-
         # Button labels
         up_text = FONT_TEXT.render("↑", True, BLACK)
         down_text = FONT_TEXT.render("↓", True, BLACK)
@@ -190,7 +190,6 @@ def build_album_screen(album_cover, album_name, artist_name,tracklist):
         screen.blit(up_text, (420, 310))
         screen.blit(down_text, (420, 410))
         screen.blit(exit_text, (65, 60))
-
 
         pygame.display.flip()
 
@@ -201,12 +200,12 @@ def build_album_screen(album_cover, album_name, artist_name,tracklist):
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if up_button.collidepoint(event.pos) and scroll_position > 0:
                     scroll_position -= 1  # Scroll up
-                elif down_button.collidepoint(event.pos) and scroll_position + visible_items < len(tracklist):
+                elif down_button.collidepoint(
+                    event.pos
+                ) and scroll_position + visible_items < len(tracklist):
                     scroll_position += 1  # Scroll down
                 elif exit_button.collidepoint(event.pos):
                     build_start_screen()
-
-
 
     pygame.quit()
 
@@ -217,9 +216,11 @@ def build_start_screen():
     pygame.display.set_caption("Album Detector")
 
     # Button properties
-    detect_button = pygame.Rect(SCREEN_HEIGHT/2, 150, 400, 100)  # (x, y, width, height)
+    detect_button = pygame.Rect(
+        SCREEN_HEIGHT / 2, 150, 400, 100
+    )  # (x, y, width, height)
 
-    quit_button=pygame.Rect(SCREEN_HEIGHT/2, 350, 400, 100)
+    quit_button = pygame.Rect(SCREEN_HEIGHT / 2, 350, 400, 100)
 
     def run_detection():
 
@@ -244,17 +245,21 @@ def build_start_screen():
 
             capture(frame)
             break
-    
 
         # Release the VideoCapture object
         cap.release()
         cv2.destroyAllWindows()
         print("picture taken")
 
-        album_name,artist=get_album_name()
-        tracklist = get_album_data(album_name,artist)
+        album_name, artist = get_album_name()
+        tracklist = get_album_data(album_name, artist)
 
-        build_album_screen(album_cover="album_cover.jpeg",album_name=album_name,artist_name=artist,tracklist=tracklist)
+        build_album_screen(
+            album_cover="album_cover.jpeg",
+            album_name=album_name,
+            artist_name=artist,
+            tracklist=tracklist,
+        )
 
     running = True
     while running:
@@ -276,7 +281,7 @@ def build_start_screen():
         if quit_button.collidepoint(mouse_pos):
             pygame.draw.rect(screen, RED, quit_button)
             if mouse_pressed[0]:  # Left mouse button clicked
-                running=False
+                running = False
         else:
             pygame.draw.rect(screen, LIGHT_RED, quit_button)
 
@@ -301,17 +306,11 @@ def build_start_screen():
     pygame.quit()
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
 
     # Authenticate OPENAI
     client = OpenAI(
-        api_key=os.environ.get("OPENAI_API_KEY"),  
+        api_key=os.environ.get("OPENAI_API_KEY"),
     )
 
     build_start_screen()
-    
-
-
-
-
-
